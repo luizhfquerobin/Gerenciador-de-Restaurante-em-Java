@@ -29,7 +29,7 @@ public class Restaurante {
     }
 
     private void menu() {
-        System.out.println("Selecione a opação (refazer essa parte de seleção): "); //refazer
+        System.out.println("Selecione uma das opções abaixo\n1 - Menu Funcionário\n2 - Menu Cardápio\n3 - Menu Mesa\n4 - Menu Pedidos\n5 - Gerar Relatório do Restaurante\n6 - Fechar sistema\nOpção selecionada: "); //refazer
         int opcao = scanner.nextInt();
 
         while (true) {
@@ -79,7 +79,7 @@ public class Restaurante {
                 listarFuncionarios();
                 break;
             case 5:
-//                gerarRelatorioVendasFuncionario(); a fazer
+                gerarRelatorioVendasFuncionario();
                 break;
             default:
                 System.out.println("Opção inválida");
@@ -167,7 +167,29 @@ public class Restaurante {
         }
     }
 
-    // gerarRelatorioVendasFuncionario() {} a fazer
+    private void gerarRelatorioVendasFuncionario() {
+        System.out.println("Digite o id do garçom: ");
+        int idFuncionario = scanner.nextInt();
+        System.out.println("Gerando relatório de pedidos do funcionario");
+        int qtdPedidos = 0;
+        float valorPedidos = 0;
+        for (Pedido pedido : pedidos) {
+            if (pedido.getIdGarcom() == idFuncionario) {
+                qtdPedidos++;
+                valorPedidos += pedido.getValorTotal();
+            }
+        }
+        String nameFuncionario = "";
+        for (Funcionario funcionario : funcionarios) {
+            if (funcionario.getId() == idFuncionario) {
+                nameFuncionario = funcionario.getNome();
+            }
+        }
+
+        System.out.println("Funcionário: " + nameFuncionario);
+        System.out.println("Quatidade de pedidos servidos pelo funcionário: " + qtdPedidos);
+        System.out.println("Valor total dos pedidos servidos pelo funcionário: " + valorPedidos);
+    }
 
     // -- Cardápio -- //
 
@@ -328,7 +350,7 @@ public class Restaurante {
     // -- Pedido -- //
 
     private void menuPedido() {
-        System.out.println("Selecione uma das opções abaixo:\n1 - Cadastrar\n2 - Listar");
+        System.out.println("Selecione uma das opções abaixo:\n1 - Cadastrar\n2 - Listar\n3 - Registrar Pagamento");
         int opcao = scanner.nextInt();
 
         switch (opcao) {
@@ -338,6 +360,9 @@ public class Restaurante {
             case 2:
                 listarPedido();
                 break;
+            case 3:
+                registrarPagamento();
+                break;
             default:
                 System.out.println("Opção inválida");
                 menuPedido();
@@ -346,15 +371,44 @@ public class Restaurante {
 
     private void cadastrarPedido() {
         Pedido pedido = new Pedido();
-        System.out.println("Digite o ID do garçom: ");
-        pedido.setIdGarcom(scanner.nextInt());
+        System.out.println("Digite o ID do garçom (digite -1 para voltar): ");
+        int idGarcom = scanner.nextInt();
+        if (idGarcom == -1) {
+            return;
+        }
         System.out.println("Digite o ID da mesa: ");
-        pedido.setIdGarcom(scanner.nextInt());
+        int idMesa = scanner.nextInt();
 
-        if (this.mesas.isEmpty()) {
+        for (Mesa mesa : mesas) {
+            if (!mesa.getDisponivel()) {
+                System.out.println("Mesa indisponivel");
+                cadastrarPedido();
+                return;
+            } else if (mesa.getId() == idMesa) {
+                pedido.setIdMesa(idMesa);
+                mesa.setDisponivel(false);
+            } else {
+                System.out.println("Essa mesa não existe");
+                cadastrarPedido();
+                return;
+            }
+        }
+
+        for (Funcionario funcionario : funcionarios) {
+            if (funcionario.getId() == idGarcom) {
+                pedido.setIdGarcom(idGarcom);
+            } else {
+                System.out.println("Esse garçom não existe");
+                cadastrarPedido();
+                return;
+            }
+        }
+
+
+        if (this.pedidos.isEmpty()) {
             pedido.setId(1);
         } else {
-            pedido.setId(this.cardapios.get(cardapios.size() - 1).getId() + 1);
+            pedido.setId(this.pedidos.get(pedidos.size() - 1).getId() + 1);
         }
 
         int opcao = 1;
@@ -370,12 +424,45 @@ public class Restaurante {
             }
         } while (opcao != 2);
 
-        // fazer o valor total,  tem q verificar se os id existe e bla bla
+        double valorTotal = 0;
+        for (ItemPedido itemPedido : pedido.getItensPedido()) {
+            double precoCardapio = 0;
+            int quantidadePedida = 0;
+            for (Cardapio cardapio : cardapios) {
+                if (cardapio.getId().equals(itemPedido.getIdCardapio())) {
+                    precoCardapio = cardapio.getPreco();
+                }
+            }
+            quantidadePedida += itemPedido.getQuantidade();
+            valorTotal += (precoCardapio * quantidadePedida);
+        }
+        pedido.setValorTotal(valorTotal);
 
         this.pedidos.add(pedido);
 
         System.out.println("Adicionado com sucesso");
         System.out.println(pedido);
+    }
+
+    private void registrarPagamento() {
+        System.out.println("Digite o ID do pedido para registrar pagamento: ");
+        int idPedido = scanner.nextInt();
+
+        for (Pedido pedido : pedidos) {
+            if (pedido.getId() == idPedido) {
+                for (Mesa mesa : mesas) {
+                    if (mesa.getId().equals(pedido.getIdMesa())) {
+                        mesa.setDisponivel(true);
+                    }
+                }
+                System.out.println("Valor total do pedido da mesa: " + pedido.getValorTotal());
+                System.out.println("Mesa liberada");
+            } else {
+                System.out.println("Pedido com essa ID não existe");
+            }
+        }
+
+
     }
 
     private ItemPedido criarItemPedido(Integer idPedido) {
@@ -402,20 +489,20 @@ public class Restaurante {
 
             System.out.println("Digite a quantidade pedida: ");
             int quantidade = scanner.nextInt();
-           if (!mesas.isEmpty()) {
-               for (Cardapio cardapio : cardapios) {
-                   if (cardapio.getQuantidade() >= quantidade ) {
-                       itemPedido.setQuantidade(quantidade);
-                       cardapio.setQuantidade(cardapio.getQuantidade() - quantidade);
-                   } else {
-                       System.out.println("Quantidade não disponivel, em estoque: " + cardapio.getQuantidade());
-                       return criarItemPedido(idPedido);
-                   }
-               }
-           } else {
-               System.out.println("Não há mesas cadastradas");
-               return criarItemPedido(idPedido);
-           }
+            if (!mesas.isEmpty()) {
+                for (Cardapio cardapio : cardapios) {
+                    if (cardapio.getQuantidade() >= quantidade) {
+                        itemPedido.setQuantidade(quantidade);
+                        cardapio.setQuantidade(cardapio.getQuantidade() - quantidade);
+                    } else {
+                        System.out.println("Quantidade não disponivel, em estoque: " + cardapio.getQuantidade());
+                        return criarItemPedido(idPedido);
+                    }
+                }
+            } else {
+                System.out.println("Não há mesas cadastradas");
+                return criarItemPedido(idPedido);
+            }
 
             itemPedido.setIdPedido(idPedido);
         }
@@ -432,6 +519,16 @@ public class Restaurante {
     // -- Restaurante -- //
 
     private void gerarRelatorioDeFaturamento() {
-        // a fazer
+        System.out.println("Relatório do restaurante: ");
+        if (pedidos.isEmpty()) {
+            System.out.println("O restaurante não vendeu nada!");
+        } else {
+            float valorTotal = 0;
+            for (Pedido pedido : pedidos) {
+                System.out.printf("Id Pedido: %d - Id Funcionário: %d - Id Mesa: %d - Valor Total do Pedido: %.2f\n", pedido.getId(), pedido.getIdGarcom(), pedido.getIdMesa(), pedido.getValorTotal());
+                valorTotal += pedido.getValorTotal();
+            }
+            System.out.println("Valor total vendido: " + valorTotal);
+        }
     }
 }
